@@ -1,0 +1,59 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:15.5
+    environment:
+      POSTGRES_USER: gitlab
+      POSTGRES_PASSWORD: gitlab
+      POSTGRES_DB: gitlabhq_production
+    volumes:
+      - /var/data/postgres/data:/var/lib/postgresql/data
+    networks:
+      - net_app
+  redis:
+    image: redis:3.2.11-alpine
+    volumes:
+      - /var/data/redis/data:/data
+    networks:
+      - net_app   
+  gitlab:
+    image: gitlab/gitlab-ce:16.7.0-ce.0
+    environment:      
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.example.net'
+        pages_external_url 'http://gitlab.example.net'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2222
+        gitlab_rails['time_zone'] = 'America/Fortaleza'
+        GITLAB_ROOT_EMAIL= 'admin@example.net'
+        gitlab_rails['initial_root_password'] = '442b7dbcc79751a6077a1a63f0749815'
+        postgresql['enable'] = false
+        redis['enable'] = false
+        gitlab_rails['db_adapter'] = 'postgresql'
+        gitlab_rails['db_encoding'] = 'unicode'
+        gitlab_rails['db_database'] = 'gitlabhq_production'
+        gitlab_rails['db_username'] = 'gitlab'
+        gitlab_rails['db_password'] = 'gitlab'
+        gitlab_rails['db_host'] = 'postgres'
+        gitlab_rails['db_port'] = 5432
+        gitlab_rails['redis_host'] = 'redis'
+        gitlab_rails['redis_port'] = 6379        
+    ports:            
+      - '2222:22'    
+    volumes:
+      - /var/data/gitlab/conf:/etc/gitlab
+      - /var/data/gitlab/logs:/var/log/gitlab
+      - /var/data/gitlab/data:/var/opt/gitlab
+    networks:
+      - net_app
+    deploy:
+      labels:
+       - traefik.enable=true
+       - traefik.frontend.rule=Host:gitlab.example.net
+       - traefik.port=80
+       - traefik.docker.network=net_app      
+
+networks:
+  net_app:
+    external: true
+    
